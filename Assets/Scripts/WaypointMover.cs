@@ -1,7 +1,7 @@
 using System.Collections;
 using UnityEngine;
 
-public class GoPlaces : MonoBehaviour
+public class WaypointMover : MonoBehaviour
 {
     [SerializeField] private Transform _wayPoints;
     [SerializeField] private float _movementSpeed;
@@ -10,28 +10,29 @@ public class GoPlaces : MonoBehaviour
     [SerializeField] private float _stoppingDistance;
 
     private Transform[] _targets;
-    private Coroutine _movement;
+    private Coroutine _move;
 
     private void OnEnable()
     {
         if (TryGetPlaces())
         {
-            if(_movement == null)
+            if(_move == null)
             {
-                _movement = StartCoroutine(Move());
+                _move = StartCoroutine(Move());
             }
         }
     }
 
     private void OnDisable()
     {
-        if (_movement != null)
+        if (_move != null)
         {
-            StopCoroutine(_movement);
-            _movement = null;
+            StopCoroutine(_move);
+            _move = null;
         }
     }
 
+    [ContextMenu("Refresh Waypoints")]
     private bool TryGetPlaces()
     {
         if (_wayPoints == null || _wayPoints.childCount == 0)
@@ -39,15 +40,15 @@ public class GoPlaces : MonoBehaviour
 
         _targets = new Transform[_wayPoints.childCount];
 
-        for (int i = 0; i < _wayPoints.childCount; i++)
+        for (int i = 0; i < _targets.Length; i++)
             _targets[i] = _wayPoints.GetChild(i);
 
-        if (_targets.Length > 0)
-        {
-            return true;
-        }
+        return _targets.Length > 0;
+    }
 
-        return false;
+    private bool IsCloseEnough(Vector3 currentPosition, Vector3 currentTarget)
+    {
+        return (currentTarget - currentPosition).sqrMagnitude <= _stoppingDistance * _stoppingDistance;
     }
 
     private IEnumerator Move()
@@ -59,7 +60,7 @@ public class GoPlaces : MonoBehaviour
         {
             Vector3 target = _targets[currentPlaceIndex].position;
 
-            while (IsFarEnough(transform.position, target))
+            while (!IsCloseEnough(transform.position, target))
             {
                 transform.position = Vector3.MoveTowards(transform.position, target, _movementSpeed * Time.deltaTime);
 
@@ -74,19 +75,9 @@ public class GoPlaces : MonoBehaviour
                 yield return null;
             }
 
-            currentPlaceIndex++;
-
-            if(currentPlaceIndex >= _targets.Length)
-            {
-                currentPlaceIndex = 0;
-            }
+            currentPlaceIndex = ++currentPlaceIndex % _targets.Length;
 
             yield return waitForSeconds;  
         }
-    }
-
-    private bool IsFarEnough(Vector3 currentPosition,Vector3 currentTarget)
-    {
-        return (currentTarget - currentPosition).sqrMagnitude > _stoppingDistance * _stoppingDistance;
     }
 }
